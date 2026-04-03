@@ -1,36 +1,145 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Özcan Filtre - Teklif & Stok Yönetim Sistemi
 
-## Getting Started
+Diyarova - Özcan filtre dağıtım teklif sistemi. Excel makro dosyasındaki tüm işlevselliği replika eden modern web uygulaması.
 
-First, run the development server:
+## Özellikler
+
+- **Müşteri Yönetimi**: Cari iskonto, ödeme planı, iletişim bilgileri
+- **Ürün Kataloğu**: 3 tedarikçi (Donaldson, MAHLE, Baveria-Woodson) ~10.000 ürün
+- **Otomatik Fiyat Hesaplama**: İskonto, KDV (%20), kur çevirme, markup oranları
+- **Teklif Oluşturma**: Otomatik fiyat arama, PDF çıktı, durum takibi
+- **Stok Yönetimi**: Filtre kodu normalizasyonu, stok takibi
+- **Kargo Hesaplama**: Desi bazlı YURTİÇİ kargo fiyat hesabı
+- **Kullanıcı Yetkilendirme**: Admin, Müdür, Satış Temsilcisi rolleri
+- **Denetim Günlüğü**: Tüm işlemler loglanır
+
+## Teknolojiler
+
+- **Frontend**: Next.js 16, React 19, Tailwind CSS 4, TypeScript
+- **Backend**: Next.js Server Actions, NextAuth.js v5
+- **Veritabanı**: PostgreSQL (Neon DB), Prisma ORM v6
+- **Deployment**: Vercel
+
+## Kurulum
+
+### 1. Bağımlılıkları yükleyin
+
+```bash
+npm install
+```
+
+### 2. Neon DB oluşturun
+
+1. [neon.tech](https://neon.tech) adresine gidin
+2. Yeni proje oluşturun
+3. Connection string'i kopyalayın
+
+### 3. Ortam değişkenlerini ayarlayın
+
+`.env` dosyasını düzenleyin:
+
+```env
+DATABASE_URL="postgresql://user:pass@ep-xyz.region.neon.tech/neondb?sslmode=require"
+AUTH_SECRET="openssl-rand-base64-32-ile-olusturun"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+`AUTH_SECRET` oluşturmak için:
+```bash
+openssl rand -base64 32
+```
+
+### 4. Veritabanı migration
+
+```bash
+npx prisma migrate dev --name init
+```
+
+### 5. Başlangıç verilerini yükleyin
+
+```bash
+# Temel kullanıcılar ve kur bilgileri
+npm run db:seed
+
+# Excel dosyasından ürün ve müşteri verileri
+npm run db:import
+```
+
+### 6. Geliştirme sunucusu
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 adresinde açın.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Varsayılan Giriş Bilgileri
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Email | Şifre | Rol |
+|-------|-------|-----|
+| admin@ozcanfiltre.com | admin123 | Admin |
+| satis@ozcanfiltre.com | manager123 | Satış Temsilcisi |
 
-## Learn More
+> ⚠️ İlk girişten sonra şifreleri değiştirmeyi unutmayın!
 
-To learn more about Next.js, take a look at the following resources:
+## Vercel'e Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. GitHub'a push edin
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR_USER/ozcan-filter-app.git
+git push -u origin main
+```
 
-## Deploy on Vercel
+### 2. Vercel'de import edin
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. [vercel.com](https://vercel.com) adresine gidin
+2. "Import Project" → GitHub repo seçin
+3. Environment Variables ekleyin:
+   - `DATABASE_URL` → Neon connection string
+   - `AUTH_SECRET` → Rastgele secret
+   - `NEXTAUTH_URL` → `https://your-app.vercel.app`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Veritabanı migration (production)
+
+```bash
+npx prisma migrate deploy
+```
+
+## Proje Yapısı
+
+```
+src/
+├── actions/         # Server Actions (CRUD işlemleri)
+│   ├── admin.ts     # Kullanıcı yönetimi, audit logları
+│   ├── customers.ts # Müşteri CRUD
+│   ├── products.ts  # Ürün arama, fiyat hesaplama
+│   ├── quotes.ts    # Teklif oluşturma/yönetme
+│   ├── shipping.ts  # Kargo hesaplama
+│   └── stock.ts     # Stok yönetimi
+├── app/
+│   ├── api/auth/    # NextAuth API route
+│   ├── dashboard/   # Tüm dashboard sayfaları
+│   └── login/       # Giriş sayfası
+├── components/      # Paylaşılan bileşenler
+├── lib/             # Prisma, Auth, Audit yardımcıları
+└── types/           # TypeScript tip tanımları
+
+prisma/
+├── schema.prisma    # Veritabanı şeması
+├── seed.ts          # Başlangıç verileri
+└── import-excel.ts  # Excel veri aktarımı
+```
+
+## İş Kuralları (Excel'den)
+
+- **KDV Oranı**: %20
+- **Baveria Markup**: %40 (Excel $M$1)
+- **MAHLE Markup**: %15 (Excel $O$1)
+- **Fiyat Arama Sırası**: Donaldson → MAHLE → Baveria (fallback)
+- **Kur**: EUR ve USD güncel kurları ile TL'ye çevirme
+- **Ödeme Planları**: NAKİT, VADELİ, EURO
+- **Filtre Kodu Normalizasyonu**: -, /, virgül, boşluk, nokta kaldırılır (VBA ÇOKLU_FİLTRE_DÜZENLEME_111 makrosu)

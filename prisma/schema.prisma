@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  SALES_REP
+}
+
+enum PaymentPlan {
+  NAKIT
+  VADELI
+  EURO
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          Role     @default(SALES_REP)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  quotes        Quote[]
+  auditLogs     AuditLog[]
+}
+
+model Customer {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  paymentPlan   PaymentPlan @default(NAKIT)
+  discountRate  Float       @default(0.15)
+  notes         String?
+  machineInfo   String?
+  phone         String?
+  email         String?
+  address       String?
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  quotes        Quote[]
+
+  @@index([name])
+}
+
+model DonaldsonProduct {
+  id            String   @id @default(cuid())
+  partNumber    String   @unique
+  description   String?
+  netPrice      Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([partNumber])
+}
+
+model MahleProduct {
+  id              String    @id @default(cuid())
+  mahleRef        String    @unique
+  mahleCode       String?
+  knechtCode      String?
+  vehicleGroup    String?
+  productName     String?
+  availability    String?
+  description     String?
+  supersededTo    String?
+  price           Float
+  validFrom       DateTime?
+  validTo         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([mahleRef])
+}
+
+model BaveriaProduct {
+  id            String   @id @default(cuid())
+  filterCode    String   @unique
+  unitPriceUsd  Float
+  discountRate  Float    @default(0.43)
+  woodsonCode   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([filterCode])
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  currency  String
+  rate      Float
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([currency])
+}
+
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  paymentMethod   PaymentPlan
+  discountRate    Float
+  baveriaMarkup   Float       @default(0.40)
+  mahleMarkup     Float       @default(0.15)
+  kdvRate         Float       @default(0.20)
+  euroRate        Float?
+  usdRate         Float?
+  status          QuoteStatus @default(DRAFT)
+  notes           String?
+  totalNetPrice   Float       @default(0)
+  totalWithKdv    Float       @default(0)
+  validUntil      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           QuoteItem[]
+
+  @@index([customerId])
+  @@index([userId])
+  @@index([quoteNumber])
+}
+
+model QuoteItem {
+  id              String   @id @default(cuid())
+  quoteId         String
+  quote           Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  lineNumber      Int
+  filterCode      String
+  customerCode    String?
+  quantity        Int      @default(1)
+  unitPrice       Float
+  unitPriceWithKdv Float
+  totalNetPrice   Float
+  listPrice       Float?
+  discountedPrice Float?
+  supplierSource  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([quoteId])
+}
+
+model StockItem {
+  id            String   @id @default(cuid())
+  filterCode    String   @unique
+  normalizedCode String?
+  donaldsonCode String?
+  mahleCode     String?
+  quantity      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([filterCode])
+  @@index([normalizedCode])
+}
+
+model ShippingRate {
+  id          String   @id @default(cuid())
+  desi        Int      @unique
+  netPrice    Float
+  kdvIncluded Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entity      String
+  entityId    String?
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
